@@ -10,16 +10,16 @@ def kernel(client):
         try:
             data_user = client.recv(1024).decode()
         except error:
-            print('Error de lectura.')
+            print(' [x] Data reading error!')
             break
 
 
-def send(src, dst, msg):
+def send(cmd, src, dst, msg):
 
     message = {}
     date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     
-    message = {'cmd':'send', 'src':src, 'dst':dst, 'msg':'[LOG] ({}): {}'.format(date, msg)}
+    message = {'cmd':cmd, 'src':src, 'dst':dst, 'msg':'[LOG] ({}): {}'.format(date, msg)}
     print(message)
 
 if __name__ == '__main__':
