@@ -2,6 +2,7 @@ import socket
 import json
 import os
 import random
+import time
 from datetime import datetime
 from _thread import *
 
@@ -19,7 +20,7 @@ def file_manager(kernel, addr):
             break
 
 def controller(data, addr):
-    # os.listdir(dir)
+
     data = json.loads(data)
     port = addr[1]
     date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -28,8 +29,13 @@ def controller(data, addr):
     if not os.path.exists(str(port)):
         os.mkdir(str(port))
     
-    write_log(log_name, data['msg_user'])
-    write_log(log_name, data['msg_kernel'])
+    if 'msg_user' in data: write_log(log_name, data['msg_user'])
+    if 'msg_kernel' in data: write_log(log_name, data['msg_kernel'])
+    if 'msg_app' in data: write_log(log_name, data['msg_app'])
+
+    # Comentar este método para quitar la respuesta
+    if not 'msg_app' in data:
+        response(log_name, date)
 
     if data['cmd'] == 'create':
         msg_user, msg_log = create_folder(port, data['info'], date)
@@ -48,9 +54,8 @@ def controller(data, addr):
 
     elif data['cmd'] == 'exit':
         print(" [FILE] Conneciton finished: " + str(addr))
-        msg_log = '[LOG] [FILE] connection ended with kernel'
+        msg_log = '[LOG] [FILE] ({}): connection ended with kernel'.format(date)
         write_log(log_name, msg_log)
-        conn.send(msg_user.encode())
 
 def create_folder(port, name, date):
 
@@ -99,10 +104,10 @@ def show_folders(port, date):
         msg_log = '[LOG] [FILE] ({}): no folder has been created'.format(date)
         return msg_user, msg_log
 
-
 def write_log(name, msg):
+
     if os.path.exists(name):
-        file = open(name, 'a') # a -> append
+        file = open(name, 'a')
         file.write('{}\n'.format(msg))
         file.close()
     else:
@@ -110,18 +115,20 @@ def write_log(name, msg):
         file.write('{}\n'.format(msg))
         file.close()
 
-def response():
+def response(log_name, date):
     # Por ahora lo haremos sin error
-    number = random.randint(0, 1)
-    #number = random.randint(0, 2)
+    number = random.randint(0, 9)
 
-    if number == 0:
-        msg = {'codterm':number, 'msg':'OK'}
-    elif number == 1:
-        msg = {'codterm':number, 'msg':'0'}
-    elif number == 2:
-        msg = {'codterm':number, 'msg':'Err'}
-
+    if number <= 4:
+        msg = '[LOG] [FILE] ({}): OK!'.format(date)
+        write_log(log_name, msg)
+    elif number > 4:
+        msg = '[LOG] [FILE] ({}): SYSTEM BUSY: waiting 3 seconds...'.format(date)
+        write_log(log_name, msg)
+        time.sleep(3)
+    elif number == 10:
+        msg = '[LOG] [FILE] ({}): ERROR!'.format(date)
+        write_log(log_name, msg)
 
 if __name__ == '__main__':
 
