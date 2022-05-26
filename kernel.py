@@ -1,4 +1,3 @@
-# https://github.com/JPabloPena/ST0263-Proyecto1/blob/master/server/server.py
 import socket
 import json
 from datetime import datetime
@@ -9,18 +8,21 @@ def kernel(client, addr):
     file_socket = socket.socket()
     file_socket.connect( ('localhost', 8001) ) # Se conecta al file_manager
 
+    app_socket = socket.socket()
+    app_socket.connect( ('localhost', 8002) ) # Se conecta a applications
+
     while True:
 
         try:
             data_user = client.recv(1024).decode()
             if data_user:
-                controller(data_user, addr, file_socket)
+                controller(data_user, addr, file_socket, app_socket)
             
         except error:
             print(' [KERNEL] Data reading error!')
             break
 
-def controller(data, addr, file_socket):
+def controller(data, addr, file_socket, app_socket):
     
     data = json.loads(data)
     port = addr[1]
@@ -36,10 +38,8 @@ def controller(data, addr, file_socket):
         send_to_file(data['cmd'], data['src'], data['dst'], data['info'], data['msg'], port, file_socket)
 
     elif data['dst'] == 'application':
-        send_to_application()
+        send_to_application(data['cmd'], data['src'], data['dst'], data['info'], data['msg'], data['pid'], port, file_socket, app_socket)
     
-
-
 def send_to_file(cmd, src, dst, info, msg_user, port, file_socket):
     
     date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -75,10 +75,35 @@ def send_to_file(cmd, src, dst, info, msg_user, port, file_socket):
         file_socket.send(json.dumps(message).encode())
         file_socket.close()
 
+def send_to_application(cmd, src, dst, info, msg_user, pid, port, file_socket, app_socket):
 
-def send_to_application():
-    return 0
+    date = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    
+    if cmd == 'open':
+        msg = 'opening {} app'.format(info)
+        msg_kernel = '[LOG] [KERNEL] ({}): {}'.format(date, msg)
+        app_message = {'cmd':cmd, 'info':info, 'pid':pid}
+        app_socket.send(json.dumps(app_message).encode())
 
+        data_app = app_socket.recv(1024).decode()
+        data_app = json.loads(data_app)
+
+        file_message = {'cmd':cmd, 'src':src, 'dst':dst, 'info':info, 'port':port, 'msg_user':msg_user, 'msg_kernel':msg_kernel, 'msg_app':data_app['msg_app']}
+        file_socket.send(json.dumps(file_message).encode()) # Escribe en el log lo del usuario       
+        conn.send(json.dumps(data_app).encode())
+
+    elif cmd == 'close':
+        msg = 'closing {} app'.format(info)
+        msg_kernel = '[LOG] [KERNEL] ({}): {}'.format(date, msg)
+        app_message = {'cmd':cmd, 'info':info, 'pid':pid}
+        app_socket.send(json.dumps(app_message).encode())
+
+        data_app = app_socket.recv(1024).decode()
+        data_app = json.loads(data_app)
+
+        file_message = {'cmd':cmd, 'src':src, 'dst':dst, 'info':info, 'port':port, 'msg_user':msg_user, 'msg_kernel':msg_kernel, 'msg_app':data_app['msg_app']}
+        file_socket.send(json.dumps(file_message).encode()) # Escribe en el log lo del usuario       
+        conn.send(json.dumps(data_app).encode())
 
 if __name__ == '__main__':
 
@@ -98,7 +123,3 @@ if __name__ == '__main__':
 
     except Exception as error:
         print(socket.error)
-
-
-## Application module
-# If user sends like a 1, the application module executes the calculator, something like that
